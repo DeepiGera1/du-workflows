@@ -1,0 +1,47 @@
+main:
+  params: [input]
+  steps:
+    - init:
+        assign:
+          - project_id: ${default(map.get(input, "project_id"), "du-data-490720")}
+          - region: ${default(map.get(input, "region"), "europe-west2")}
+          - ingestion_workflow_name: ${default(map.get(input, "ingestion_workflow_name"), "du-ingestion")}
+          - curation_workflow_name: ${default(map.get(input, "curation_workflow_name"), "du-curation")}
+
+    - call_ingestion_workflow:
+        call: googleapis.workflowexecutions.v1.projects.locations.workflows.executions.run
+        args:
+          workflow_id: ${ingestion_workflow_name}
+          location: ${region}
+          project_id: ${project_id}
+          argument:
+            project_id: ${project_id}
+            region: ${region}
+            job_name: "du-ingestion"
+            dataset: "du_operational"
+            table: "du_university_chapters"
+            bucket_name: "du_ingestion_data"
+        result: ingestion_result
+
+    - call_curation_workflow:
+        call: googleapis.workflowexecutions.v1.projects.locations.workflows.executions.run
+        args:
+          workflow_id: ${curation_workflow_name}
+          location: ${region}
+          project_id: ${project_id}
+          argument:
+            project_id: ${project_id}
+            region: europe-west2
+            job_name: "curation-job"
+            raw_dataset: "du_operational"
+            raw_table: "du_university_chapters"
+            curated_dataset: "du_user"
+            curated_table: "university_chapters"
+        result: curation_result
+
+    - done:
+        return:
+          workflow: "orchestrator_workflow"
+          status: "completed"
+          ingestion: ${ingestion_result}
+          curation: ${curation_result}

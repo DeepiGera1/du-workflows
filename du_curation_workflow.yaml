@@ -1,0 +1,21 @@
+main:
+  params: [input]
+  steps:
+    - init:
+        assign:
+          - project_id: ${default(map.get(input, "project_id"), "du-data-490720")}
+          - region: ${default(map.get(input, "region"), "europe-west2")}
+          - job_name: ${default(map.get(input, "job_name"), "curation-job")}
+    - run_curation_job:
+        call: googleapis.run.v1.namespaces.jobs.run
+        args:
+          name: ${"namespaces/" + project_id + "/jobs/" + job_name}
+          location: ${region}
+        result: curation_execution
+
+    - return_result:
+        return:
+          workflow: "curation_workflow"
+          status: "started"
+          job_name: ${job_name}
+          execution: ${curation_execution}
